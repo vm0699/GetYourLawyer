@@ -301,6 +301,32 @@ test('admin: dashboard, settings (commission), broadcast, suspend, export, sampl
   assert.ok((await api('GET', '/api/admin/audit', null, adminTok)).body.items.length > 5);
 });
 
+test('demo seed: a new client and a new lawyer each start with a realistic history; clear removes it', async () => {
+  process.env.DEMO_OTP = '123456';
+  const SC = await login('9000000081', 'client'), SL = await login('9000000082', 'lawyer'); delete process.env.DEMO_OTP;
+  // client
+  const bk = await api('GET', '/api/bookings', null, SC.token); assert.ok(bk.body.items.some(b => b.status === 'completed' && !b.reviewed)); assert.ok(bk.body.items.some(b => b.status === 'confirmed'));
+  const cs = await api('GET', '/api/cases', null, SC.token); assert.equal(cs.body.items.length, 2); assert.equal(cs.body.items.filter(c => c.status === 'open').length, 1); assert.equal(cs.body.items.find(c => c.status === 'open').pendingInvoices, 1);
+  const det = await api('GET', '/api/cases/' + cs.body.items.find(c => c.status === 'open').id, null, SC.token); assert.equal(det.body.case.hearings.length, 2); assert.ok(det.body.case.nextHearing); assert.equal(det.body.case.notes, undefined); assert.equal(det.body.case.files.length, 1);
+  assert.equal((await api('GET', '/api/conversations', null, SC.token)).body.unread, 1);
+  assert.equal((await api('GET', '/api/me', null, SC.token)).body.me.favs.length, 2);
+  const unpaid = det.body.case.invoices.find(i => i.status === 'unpaid'); assert.equal((await api('POST', '/api/payments/' + unpaid.paymentId + '/pay', { method: 'netbanking' }, SC.token)).status, 200);
+  // lawyer
+  const lc = await api('GET', '/api/cases', null, SL.token); assert.equal(lc.body.items.length, 3);
+  const ld = await api('GET', '/api/lawyer/dashboard', null, SL.token); assert.ok(ld.body.kpi.openCases === 2); assert.ok(ld.body.hearings.length >= 1); assert.ok(ld.body.kpi.pendingRequests >= 1);
+  const er = await api('GET', '/api/lawyer/earnings', null, SL.token); assert.ok(er.body.balance > 0);
+  assert.equal((await api('GET', '/api/requests', null, SL.token)).body.items.length, 1);
+  const rp = await api('GET', '/api/lawyer/reports', null, SL.token); assert.ok(rp.body.revenue.total > 0); assert.ok(rp.body.bookings.completed >= 2);
+  assert.ok((await api('GET', '/api/lawyer/clients', null, SL.token)).body.items.length >= 3);
+  assert.ok((await api('GET', '/api/conversations', null, SL.token)).body.unread >= 2);
+  // re-running the role call does not duplicate the seed
+  await api('POST', '/api/me/role', { role: 'client' }, SC.token); assert.equal((await api('GET', '/api/cases', null, SC.token)).body.items.length, 2);
+  // admin button: sample data adds history between sample people; clear removes it all including the tester seeds
+  const loaded = await api('POST', '/api/admin/sample', { action: 'load' }, adminTok); assert.equal(loaded.status, 200);
+  assert.ok((await api('POST', '/api/admin/sample', { action: 'clear' }, adminTok)).body.removed >= 20);
+  assert.equal((await api('GET', '/api/cases', null, SC.token)).body.items.length, 0);
+});
+
 test('data export, logout everywhere, account erasure', async () => {
   const ex = await api('GET', '/api/me/export', null, C.token); assert.ok(ex.body.profile.phone); assert.ok(ex.body.cases.every(c => c.notes === undefined));
   assert.equal((await api('POST', '/api/auth/logout-all', {}, C.token)).status, 200);

@@ -79,6 +79,8 @@ module.exports = function (R, { store, core, dl, env, dataDir, limiter }) {
       user.role = role;
       if (role === 'lawyer') user.lawyer = core.newLawyerProfile();
       core.audit('user:' + user.id, 'role_set', role); store.save();
+      // Demo mode: every tester starts with a realistic history (bookings, cases, hearings, invoices, chats) so the whole app can be explored.
+      if (env.DEMO_OTP && env.DEMO_SEED !== '0') { try { require('./lib/sampledata').populate(store, core, user); } catch (e) { console.error('demo seed failed:', e.stack || e.message); } }
     }
     return { me: view(user) };
   });
