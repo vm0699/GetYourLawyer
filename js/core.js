@@ -126,7 +126,7 @@ const API = {
   setToken(tk) { this.token = tk || ''; if (tk) LS.set('token', tk); else LS.del('token'); },
   async call(method, path, body, opt) {
     let r; const ac = new AbortController(), big = body != null && JSON.stringify(body).length > 100000;
-    const timer = setTimeout(() => ac.abort(), big ? 60000 : 15000);              // never leave a button spinning forever
+    const timer = setTimeout(() => ac.abort(), big ? 90000 : 60000);              // long enough for a sleeping free-tier server to wake; never spin forever
     if (opt && opt.signal) opt.signal.addEventListener('abort', () => ac.abort());
     try {
       r = await fetch(this.base + path, { method, headers: Object.assign({ 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1' }, this.token ? { Authorization: 'Bearer ' + this.token } : {}), body: body == null ? undefined : JSON.stringify(body), signal: ac.signal });
