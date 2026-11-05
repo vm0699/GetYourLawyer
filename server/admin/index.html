@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GetYourLawyer · Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000'/%3E%3Cpath d='M32 12v38M20 50h24M12 20h40' stroke='%23fff' stroke-width='4' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#fff;--fg:#000;--muted:#666;--line:#e3e3e3;--soft:#f5f5f5}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--soft);color:var(--fg)}
+button,input,select,textarea{font:inherit;color:inherit}
+.login{min-height:100vh;display:grid;place-items:center;padding:20px}
+.box{background:#fff;border:1px solid var(--line);border-radius:18px;padding:28px;width:100%;max-width:380px}
+.logo{width:48px;height:48px;border-radius:14px;background:#000;color:#fff;display:grid;place-items:center;margin-bottom:14px}
+h1{margin:0 0 4px;font-size:22px}h2{margin:0 0 12px;font-size:18px}h3{margin:18px 0 8px;font-size:15px}
+.muted{color:var(--muted)}.small{font-size:12px}
+label{display:block;font-weight:600;margin:12px 0 5px;font-size:13px}
+input,select,textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;outline:none}input:focus,select:focus,textarea:focus{border-color:#000}
+.btn{display:inline-block;border:1.5px solid #000;background:#000;color:#fff;border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer}
+.btn.ghost{background:#fff;color:#000}.btn.sm{padding:5px 10px;font-size:12px;border-radius:8px}.btn[disabled]{opacity:.4}
+.err{border:1.5px solid #000;border-radius:10px;padding:8px 12px;margin-top:10px;font-weight:600}
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+nav{background:#000;color:#fff;padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto}
+nav .brand{font-weight:800;font-size:16px;padding:4px 10px 16px;display:flex;gap:8px;align-items:center}
+nav a{display:flex;justify-content:space-between;align-items:center;color:#bbb;text-decoration:none;padding:9px 12px;border-radius:9px;cursor:pointer;margin:2px 0}
+nav a.on,nav a:hover{background:#fff;color:#000;font-weight:700}
+nav .n{background:#fff;color:#000;border-radius:10px;padding:0 7px;font-size:11px;font-weight:800}nav a.on .n{background:#000;color:#fff}
+main{padding:24px;max-width:1100px}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:18px}.top h2{margin:0;flex:1}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}.card b{display:block;font-size:26px;letter-spacing:-.5px}.card span{color:var(--muted);font-size:12px}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;background:#fafafa}tr:last-child td{border-bottom:0}
+tr.click{cursor:pointer}tr.click:hover{background:#fafafa}
+.pill{display:inline-block;border:1px solid #000;border-radius:999px;padding:1px 9px;font-size:11px;font-weight:700}.pill.fill{background:#000;color:#fff}.pill.soft{border-color:var(--line);color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sp{flex:1}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed var(--line)}.kv:last-child{border:0}.kv span:first-child{color:var(--muted)}
+.toast{position:fixed;right:18px;bottom:18px;background:#000;color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;z-index:9}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:grid;place-items:center;padding:20px;z-index:8}.modal .box{max-width:560px;max-height:90vh;overflow:auto}
+@media(max-width:800px){.app{grid-template-columns:1fr}nav{position:static;height:auto;display:flex;flex-wrap:wrap}nav .brand{width:100%}main{padding:14px}table{display:block;overflow-x:auto}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+'use strict';
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const rupee = n => '₹' + Number(n || 0).toLocaleString('en-IN');
+const when = t => t ? new Date(+t).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+let TOKEN = sessionStorage.getItem('gyl.admin') || '', ME = null, VIEW = 'dashboard', COUNTS = {};
+async function api(method, path, body) {
+  const r = await fetch(path, { method, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + TOKEN }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401 && TOKEN) { TOKEN = ''; sessionStorage.removeItem('gyl.admin'); render(); }
+  if (!r.ok) throw new Error(j.error || r.status);
+  return j;
+}
+function toast(m) { const e = document.createElement('div'); e.className = 'toast'; e.textContent = m; document.body.appendChild(e); setTimeout(() => e.remove(), 3000); }
+const fail = e => toast(e.message || e);
+async function openFile(id) { try { const r = await fetch('/api/admin/file/' + id, { headers: { Authorization: 'Bearer ' + TOKEN } }); if (!r.ok) throw new Error('File not found'); window.open(URL.createObjectURL(await r.blob()), '_blank'); } catch (e) { fail(e); } }
+async function download(path, name) { const r = await fetch(path, { headers: { Authorization: 'Bearer ' + TOKEN } }); const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = name; a.click(); }
+const pill = (s, f) => '<span class="pill ' + (f || '') + '">' + esc(s) + '</span>';
+
+function render() {
+  if (!TOKEN) {
+    $('#root').innerHTML = '<div class="login"><form class="box" id="lf"><div class="logo"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><line x1="6" y1="21" x2="18" y2="21"/><line x1="4" y1="6" x2="20" y2="6"/><path d="M4 6l-3 8a4 4 0 0 0 6 0z"/><path d="M20 6l-3 8a4 4 0 0 0 6 0z"/></svg></div><h1>GetYourLawyer Admin</h1><div class="muted">Sign in to manage lawyers, payments and settings.</div><label>Email</label><input id="em" type="email" autocomplete="username" required><label>Password</label><input id="pw" type="password" autocomplete="current-password" required><div id="le"></div><button class="btn" style="width:100%;margin-top:16px">Sign in</button></form></div>';
+    $('#lf').onsubmit = async e => { e.preventDefault(); try { const r = await api('POST', '/api/admin/login', { email: $('#em').value, password: $('#pw').value }); TOKEN = r.token; ME = r.admin; sessionStorage.setItem('gyl.admin', TOKEN); render(); } catch (x) { $('#le').innerHTML = '<div class="err">' + esc(x.message) + '</div>'; } };
+    return;
+  }
+  const items = [['dashboard', 'Dashboard'], ['lawyers', 'Lawyer approvals'], ['ids', 'ID reviews'], ['users', 'Users'], ['bookings', 'Bookings'], ['cases', 'Cases'], ['payments', 'Payments'], ['payouts', 'Payouts'], ['reviews', 'Reviews'], ['tickets', 'Support'], ['broadcast', 'Broadcast'], ['settings', 'Settings'], ['audit', 'Audit log']];
+  $('#root').innerHTML = '<div class="app"><nav><div class="brand">⚖ GetYourLawyer</div>' + items.map(i => '<a data-v="' + i[0] + '" class="' + (VIEW === i[0] ? 'on' : '') + '"><span>' + i[1] + '</span>' + (COUNTS[i[0]] ? '<span class="n">' + COUNTS[i[0]] + '</span>' : '') + '</a>').join('') + '<a id="out" style="margin-top:20px">Sign out</a></nav><main id="main"></main></div>';
+  document.querySelectorAll('nav a[data-v]').forEach(a => a.onclick = () => { VIEW = a.dataset.v; render(); });
+  $('#out').onclick = () => { TOKEN = ''; sessionStorage.removeItem('gyl.admin'); render(); };
+  (V[VIEW] || V.dashboard)().catch(fail);
+}
+const main = h => { $('#main').innerHTML = h; };
+function table(cols, rows, rowAttr) { return '<table><thead><tr>' + cols.map(c => '<th>' + c + '</th>').join('') + '</tr></thead><tbody>' + (rows.length ? rows.map(r => '<tr' + (rowAttr ? rowAttr(r) : '') + '>' + r.cells.map(c => '<td>' + c + '</td>').join('') + '</tr>').join('') : '<tr><td colspan="' + cols.length + '" class="muted" style="text-align:center;padding:26px">Nothing here</td></tr>') + '</tbody></table>'; }
+function modal(html) { const m = document.createElement('div'); m.className = 'modal'; m.innerHTML = '<div class="box">' + html + '</div>'; m.onclick = e => { if (e.target === m) m.remove(); }; document.body.appendChild(m); return m; }
+
+const V = {
+  async dashboard() {
+    const d = await api('GET', '/api/admin/dashboard'); COUNTS = { lawyers: d.lawyers.submitted, ids: d.pendingIds, payouts: d.payoutsPending, tickets: d.tickets };
+    const c = (n, l) => '<div class="card"><b>' + n + '</b><span>' + l + '</span></div>';
+    main('<div class="top"><h2>Dashboard</h2><span class="muted small">DigiLocker: ' + esc(d.digilocker) + ' · SMS: ' + esc(d.sms) + ' · live connections: ' + d.liveConnections + '</span></div><div class="cards">' +
+      c(d.users.clients, 'Clients') + c(d.users.lawyers, 'Lawyers') + c(d.lawyers.submitted, 'Awaiting approval') + c(d.lawyers.approved, 'Approved') + c(d.lawyers.online, 'Online now') + c(d.pendingIds, 'ID reviews pending') + '</div><div class="cards">' +
+      c(d.bookings.total, 'Bookings') + c(d.bookings.today, 'Appointments today') + c(d.cases.open, 'Open cases') + c(rupee(d.money.gross), 'Gross payments') + c(rupee(d.money.platform), 'Platform revenue') + c(d.payoutsPending, 'Payouts pending') + '</div>' +
+      '<div class="panel"><h3 style="margin-top:0">Sample data</h3><p class="muted">Loads fictional Chennai lawyers so the map, search and booking can be demonstrated. They cannot log in and are removed with one click.</p><div class="row"><button class="btn" id="sl">Load sample Chennai lawyers</button><button class="btn ghost" id="sc">Remove sample data (' + d.demoData + ')</button></div></div>');
+    $('#sl').onclick = async () => { const r = await api('POST', '/api/admin/sample', { action: 'load' }); toast(r.added ? 'Added ' + r.added + ' lawyers' : 'Already loaded'); V.dashboard(); };
+    $('#sc').onclick = async () => { if (!confirm('Remove all sample data?')) return; const r = await api('POST', '/api/admin/sample', { action: 'clear' }); toast('Removed ' + r.removed); V.dashboard(); };
+  },
+  async lawyers() {
+    const q = VIEW_Q.lawyers === undefined ? 'submitted' : VIEW_Q.lawyers;
+    const d = await api('GET', '/api/admin/lawyers' + (q ? '?status=' + q : ''));
+    main('<div class="top"><h2>Lawyer approvals</h2><select id="st" style="width:auto"><option value="">All</option>' + ['submitted', 'approved', 'rejected', 'draft'].map(s => '<option ' + (q === s ? 'selected' : '') + '>' + s + '</option>').join('') + '</select></div>' +
+      table(['Lawyer', 'Bar Council', 'Areas', 'Identity', 'Status', ''], d.items.map(l => ({ id: l.id, cells: ['<b>' + esc(l.name || '-') + '</b><div class="muted small">' + esc(l.phone) + ' · ' + esc(l.city) + '</div>', esc(l.barNo || '-') + '<div class="muted small">' + esc(l.council || '') + '</div>', esc((l.areas || []).join(', ')), pill(l.verify.status, l.verify.status === 'verified' ? 'fill' : 'soft'), pill(l.approval.status, l.approval.status === 'approved' ? 'fill' : '') + (l.hidden ? ' ' + pill('hidden', 'soft') : ''), '<button class="btn sm ghost">Review</button>'] })), r => ' class="click" data-id="' + r.id + '"'));
+    $('#st').onchange = e => { VIEW_Q.lawyers = e.target.value; V.lawyers(); };
+    document.querySelectorAll('tr.click').forEach(tr => tr.onclick = () => lawyerModal(tr.dataset.id));
+  },
+  async ids() {
+    const d = await api('GET', '/api/admin/verifications');
+    main('<div class="top"><h2>ID reviews</h2></div>' + table(['User', 'Role', 'Document', ''], d.items.map(u => ({ cells: ['<b>' + esc(u.name || '-') + '</b><div class="muted small">' + esc(u.phone) + '</div>', esc(u.role), esc(u.docType) + ' <a href="#" data-f="' + esc(u.fileId) + '">view file</a>', '<button class="btn sm" data-a="approve" data-id="' + u.id + '">Approve</button> <button class="btn sm ghost" data-a="reject" data-id="' + u.id + '">Reject</button>'] }))));
+    document.querySelectorAll('[data-f]').forEach(a => a.onclick = e => { e.preventDefault(); openFile(a.dataset.f); });
+    document.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => { const note = b.dataset.a === 'reject' ? prompt('Reason shown to the user') : ''; if (b.dataset.a === 'reject' && !note) return; await api('POST', '/api/admin/verifications/' + b.dataset.id, { decision: b.dataset.a, note }); toast('Done'); V.ids(); });
+  },
+  async users() {
+    const q = VIEW_Q.users || '', d = await api('GET', '/api/admin/users?q=' + encodeURIComponent(q));
+    main('<div class="top"><h2>Users</h2><input id="uq" placeholder="Search name or phone" value="' + esc(q) + '" style="max-width:240px"><button class="btn ghost sm" id="ue">Export CSV</button></div>' + table(['Name', 'Role', 'City', 'Verified', 'Joined', 'Status', ''], d.items.map(u => ({ cells: ['<b>' + esc(u.name || '-') + '</b><div class="muted small">' + esc(u.phone) + (u.demo ? ' · sample' : '') + '</div>', esc(u.role || 'no role'), esc(u.city), pill(u.verify.status, u.verify.status === 'verified' ? 'fill' : 'soft') + (u.verify.mismatch ? ' ' + pill('name mismatch') : ''), when(u.createdAt), pill(u.status, u.status === 'active' ? '' : 'fill'), '<button class="btn sm ghost" data-id="' + u.id + '" data-s="' + (u.status === 'active' ? 'suspended' : 'active') + '">' + (u.status === 'active' ? 'Suspend' : 'Restore') + '</button>'] }))));
+    $('#uq').onchange = e => { VIEW_Q.users = e.target.value; V.users(); }; $('#ue').onclick = () => download('/api/admin/export.csv?type=users', 'users.csv');
+    document.querySelectorAll('[data-s]').forEach(b => b.onclick = async () => { if (!confirm(b.dataset.s === 'suspended' ? 'Suspend this account? They are signed out immediately.' : 'Restore this account?')) return; await api('POST', '/api/admin/users/' + b.dataset.id + '/status', { status: b.dataset.s }); V.users(); });
+  },
+  async bookings() { const d = await api('GET', '/api/admin/bookings'); main('<div class="top"><h2>Bookings</h2><button class="btn ghost sm" id="be">Export CSV</button></div>' + table(['When', 'Client', 'Lawyer', 'Mode', 'Status', 'Total', 'Commission'], d.items.map(b => ({ cells: [esc(b.date + ' ' + b.time), esc(b.client), esc(b.lawyer), esc(b.mode), pill(b.status, b.status === 'completed' ? 'fill' : ''), rupee(b.total), rupee(b.commission)] })))); $('#be').onclick = () => download('/api/admin/export.csv?type=bookings', 'bookings.csv'); },
+  async cases() { const d = await api('GET', '/api/admin/cases'); main('<div class="top"><h2>Cases</h2></div>' + table(['No', 'Title', 'Client', 'Lawyer', 'Stage', 'Status', 'Opened'], d.items.map(c => ({ cells: [esc(c.no), esc(c.title), esc(c.client), esc(c.lawyer), esc(c.stage), pill(c.status, c.status === 'open' ? 'fill' : 'soft'), when(c.opened)] })))); },
+  async payments() { const d = await api('GET', '/api/admin/payments'); main('<div class="top"><h2>Payments</h2><button class="btn ghost sm" id="pe">Export CSV</button></div><p class="muted">Demo gateway: no real money moves. Connect Razorpay for live payments.</p>' + table(['Date', 'Kind', 'Payer', 'Payee', 'Amount', 'Method', 'Receipt', 'Status', ''], d.items.map(p => ({ cells: [when(p.t), esc(p.kind), esc(p.payer), esc(p.payee), rupee(p.amount), esc(p.method), esc(p.receipt), pill(p.status, p.status === 'paid' ? 'fill' : 'soft'), p.status === 'paid' ? '<button class="btn sm ghost" data-id="' + p.id + '">Refund</button>' : ''] })))); $('#pe').onclick = () => download('/api/admin/export.csv?type=payments', 'payments.csv'); document.querySelectorAll('[data-id]').forEach(b => b.onclick = async () => { if (!confirm('Refund this payment to the payer?')) return; await api('POST', '/api/admin/payments/' + b.dataset.id + '/refund'); toast('Refunded'); V.payments(); }); },
+  async payouts() { const d = await api('GET', '/api/admin/payouts'); main('<div class="top"><h2>Payouts</h2></div>' + table(['Requested', 'Lawyer', 'Amount', 'Bank / UPI', 'Status', ''], d.items.map(p => ({ cells: [when(p.t), esc(p.lawyer), rupee(p.amount), esc(p.bank.holder) + '<div class="muted small">•••• ' + esc(p.bank.last4) + ' · ' + esc(p.bank.ifsc) + (p.bank.upi ? ' · ' + esc(p.bank.upi) : '') + '</div>', pill(p.status, p.status === 'paid' ? 'fill' : ''), p.status === 'requested' ? '<button class="btn sm" data-d="paid" data-id="' + p.id + '">Mark paid</button> <button class="btn sm ghost" data-d="rejected" data-id="' + p.id + '">Reject</button>' : esc(p.ref || '')] })))); document.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => { const ref = b.dataset.d === 'paid' ? prompt('Bank / UPI transaction reference') : ''; if (b.dataset.d === 'paid' && !ref) return; await api('POST', '/api/admin/payouts/' + b.dataset.id, { decision: b.dataset.d, ref }); toast('Updated'); V.payouts(); }); },
+  async reviews() { const d = await api('GET', '/api/admin/reviews'); main('<div class="top"><h2>Reviews</h2></div>' + table(['Date', 'Lawyer', 'Client', 'Rating', 'Text', ''], d.items.map(r => ({ cells: [when(r.t), esc(r.lawyer), esc(r.client), '★'.repeat(r.rating), esc(r.text), '<button class="btn sm ghost" data-id="' + r.id + '" data-h="' + (r.hidden ? '0' : '1') + '">' + (r.hidden ? 'Unhide' : 'Hide') + '</button>'] })))); document.querySelectorAll('[data-h]').forEach(b => b.onclick = async () => { await api('POST', '/api/admin/reviews/' + b.dataset.id + '/hide', { hidden: b.dataset.h === '1' }); V.reviews(); }); },
+  async tickets() { const d = await api('GET', '/api/admin/tickets'); main('<div class="top"><h2>Support</h2></div>' + table(['Date', 'User', 'Message', 'Status', ''], d.items.map(t => ({ cells: [when(t.t), esc(t.user || '-') + '<div class="muted small">' + esc(t.phone || '') + ' · ' + esc(t.role) + '</div>', esc(t.text), pill(t.status, t.status === 'open' ? 'fill' : 'soft'), t.status === 'open' ? '<button class="btn sm ghost" data-id="' + t.id + '">Resolve</button>' : ''] })))); document.querySelectorAll('[data-id]').forEach(b => b.onclick = async () => { await api('POST', '/api/admin/tickets/' + b.dataset.id + '/resolve'); V.tickets(); }); },
+  async broadcast() {
+    main('<div class="top"><h2>Broadcast notification</h2></div><div class="panel" style="max-width:520px"><label>Send to</label><select id="bt"><option value="">Everyone</option><option value="client">Clients</option><option value="lawyer">Lawyers</option></select><label>Title</label><input id="bti" maxlength="100"><label>Message</label><textarea id="bm" maxlength="280" rows="3"></textarea><div style="margin-top:14px"><button class="btn" id="bs">Send</button></div></div>');
+    $('#bs').onclick = async () => { if (!$('#bti').value || !$('#bm').value) return toast('Write a title and message'); if (!confirm('Send this to ' + ($('#bt').value || 'everyone') + '?')) return; const r = await api('POST', '/api/admin/broadcast', { role: $('#bt').value, title: $('#bti').value, body: $('#bm').value }); toast('Sent to ' + r.sent + ' people'); };
+  },
+  async settings() {
+    const d = await api('GET', '/api/admin/settings'), s = d.settings, sys = d.system;
+    const num = (k, l, h) => '<label>' + l + '</label><input data-k="' + k + '" type="number" value="' + s[k] + '">' + (h ? '<div class="muted small">' + h + '</div>' : ''), chk = (k, l) => '<label style="display:flex;gap:8px;align-items:center;font-weight:500"><input data-k="' + k + '" type="checkbox" style="width:auto" ' + (s[k] ? 'checked' : '') + '> ' + l + '</label>';
+    main('<div class="top"><h2>Settings</h2></div><div class="panel" style="max-width:560px">' + num('commissionPct', 'Platform commission (%)', 'Taken from the lawyer on each paid consultation and invoice. 0 to 50.') + num('convenienceFee', 'Convenience fee for clients (₹)', 'Flat amount added to paid consultations.') + num('cancelHoursBefore', 'Free cancellation window (hours before slot)') + num('leadMinutes', 'Earliest bookable slot (minutes from now)') + num('defaultRadiusKm', 'Default search radius (km)') + num('urgentRadiusKm', 'Urgent request radius (km)') +
+      '<h3>Verification</h3>' + chk('clientVerifyRequired', 'Clients must verify before booking or registering a case') + chk('lawyerNeedsDL', 'Lawyers need DigiLocker verification to be listed') + chk('lawyerNeedsBarCert', 'Lawyers must upload their Bar Council certificate') +
+      '<h3>App</h3>' + chk('maintenance', 'Maintenance mode (blocks the app, keeps admin)') + '<label>Announcement</label><input data-k="announcement" value="' + esc(s.announcement) + '" maxlength="300"><label>Support email</label><input data-k="supportEmail" value="' + esc(s.supportEmail) + '"><label>Support phone</label><input data-k="supportPhone" value="' + esc(s.supportPhone) + '"><div style="margin-top:16px"><button class="btn" id="ss">Save settings</button></div></div>' +
+      '<div class="panel" style="max-width:560px"><h3 style="margin-top:0">System</h3><div class="kv"><span>DigiLocker provider</span><span>' + esc(sys.digilocker) + '</span></div><div class="kv"><span>SMS provider</span><span>' + esc(sys.sms) + '</span></div><div class="kv"><span>Push (FCM)</span><span>' + (sys.push ? 'on' : 'off') + '</span></div><div class="kv"><span>Public URL</span><span>' + esc(sys.publicBase) + '</span></div><div class="kv"><span>Node</span><span>' + esc(sys.node) + '</span></div></div>');
+    $('#ss').onclick = async () => { const b = {}; document.querySelectorAll('[data-k]').forEach(i => { b[i.dataset.k] = i.type === 'checkbox' ? i.checked : i.value; }); try { await api('PUT', '/api/admin/settings', b); toast('Saved'); } catch (e) { fail(e); } };
+  },
+  async audit() { const d = await api('GET', '/api/admin/audit'); main('<div class="top"><h2>Audit log</h2></div>' + table(['When', 'Who', 'Action', 'Detail'], d.items.map(a => ({ cells: [when(a.t), esc(a.who), esc(a.action), esc(a.detail)] })))); }
+};
+const VIEW_Q = {};
+async function lawyerModal(id) {
+  const { lawyer: l } = await api('GET', '/api/admin/lawyers/' + id);
+  const m = modal('<h2>' + esc(l.name) + '</h2><div class="row" style="margin-bottom:8px">' + pill(l.approval.status, l.approval.status === 'approved' ? 'fill' : '') + pill('identity: ' + l.verify.status, l.verify.status === 'verified' ? 'fill' : 'soft') + (l.listed ? pill('listed', 'fill') : pill('not listed', 'soft')) + '</div>' +
+    '<div class="kv"><span>Phone</span><span>' + esc(l.phone) + '</span></div><div class="kv"><span>Name on Aadhaar (DigiLocker)</span><span>' + esc(l.verifyName || '-') + '</span></div><div class="kv"><span>Aadhaar last 4</span><span>' + esc(l.verify.last4 || '-') + '</span></div><div class="kv"><span>Enrolment no.</span><span>' + esc(l.barNo) + '</span></div><div class="kv"><span>State Bar Council</span><span>' + esc(l.council) + '</span></div><div class="kv"><span>Enrolled</span><span>' + esc(l.enrolYear) + '</span></div><div class="kv"><span>Experience</span><span>' + esc(l.experience) + ' yrs</span></div><div class="kv"><span>Practice areas</span><span>' + esc((l.areas || []).join(', ')) + '</span></div><div class="kv"><span>Chamber</span><span>' + esc(l.office.address) + '</span></div>' +
+    '<p style="margin:12px 0 4px"><b>About:</b> ' + esc(l.bio) + '</p><div class="row" style="margin:10px 0">' + (l.certFile ? '<button class="btn ghost sm" id="vc">View Bar Council certificate</button>' : '<span class="muted">No certificate uploaded</span>') + '</div>' +
+    '<p class="small muted">Check the name on the certificate matches the Aadhaar name, and verify the enrolment number with the State Bar Council before approving.</p>' +
+    '<label>Note to lawyer (required to reject)</label><textarea id="rn" rows="2"></textarea><div class="row" style="margin-top:14px"><button class="btn" id="ap">Approve</button><button class="btn ghost" id="rj">Reject</button><span class="sp"></span><button class="btn ghost sm" id="hd">' + (l.hidden ? 'Unhide' : 'Hide from clients') + '</button></div>');
+  if (l.certFile) $('#vc', m).onclick = () => openFile(l.certFile);
+  const review = async d => { try { await api('POST', '/api/admin/lawyers/' + id + '/review', { decision: d, note: $('#rn', m).value }); m.remove(); toast(d === 'approve' ? 'Approved' : 'Rejected'); V.lawyers(); } catch (e) { fail(e); } };
+  $('#ap', m).onclick = () => review('approve'); $('#rj', m).onclick = () => review('reject');
+  $('#hd', m).onclick = async () => { await api('POST', '/api/admin/lawyers/' + id + '/hide', { hidden: !l.hidden }); m.remove(); V.lawyers(); };
+}
+render();
+if (TOKEN) api('GET', '/api/admin/dashboard').then(d => { COUNTS = { lawyers: d.lawyers.submitted, ids: d.pendingIds, payouts: d.payoutsPending, tickets: d.tickets }; render(); }).catch(() => {});
+</script>
+</body>
+</html>

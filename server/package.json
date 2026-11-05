@@ -1,0 +1,16 @@
+{
+  "name": "getyourlawyer-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GetYourLawyer backend and admin portal: phone-OTP accounts, lawyer discovery + live map, bookings, cases, chat, payments (demo gateway), DigiLocker. MongoDB for storage.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/api.test.js",
+    "seed": "node seed.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "mongodb": "^6.21.0"
+  }
+}

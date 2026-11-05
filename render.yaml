@@ -1,0 +1,44 @@
+﻿# Render blueprint for GetYourLawyer (https://render.com). Create a "Blueprint" from this repo, then fill the secrets marked sync:false.
+# Database: MongoDB Atlas. Paste its connection string into MONGO_URI (database name /getyourlawyer).
+# The web app (PWA), the admin portal (/admin) and the API are all served by this one service, so https://<service>.onrender.com is also the PWA address.
+#
+# Login codes are sent by Twilio Verify; enter the three TWILIO_* values in the Render dashboard (Environment tab).
+# NODE_ENV stays "staging" while testing (DEV_OTP is then allowed); change it to "production" at launch (the server then refuses DEV_OTP).
+services:
+  - type: web
+    name: getyourlawyer-api
+    runtime: node
+    region: singapore                 # closest Render region to India
+    plan: free                        # sleeps after ~15 min idle (first request then takes ~1 minute). Use "starter" (paid) to stay awake
+    buildCommand: cd server && npm ci --omit=dev
+    startCommand: cd server && node server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    numInstances: 1                   # keep at 1: the live map, chat stream and in-memory working set live in one process
+    envVars:
+      - { key: NODE_VERSION, value: "22" }
+      - { key: NODE_ENV, value: staging }
+      - { key: TRUST_PROXY, value: "1" }
+      - { key: PUBLIC_BASE_URL, sync: false }        # your Render address, e.g. https://getyourlawyer-api.onrender.com
+      - { key: MONGO_URI, sync: false }              # mongodb+srv://...  (database name /getyourlawyer)
+      - { key: JWT_SECRET, generateValue: true }
+      - { key: ADMIN_EMAIL, sync: false }
+      - { key: ADMIN_PASSWORD, sync: false }
+      - { key: SUPPORT_EMAIL, sync: false }
+      - { key: APP_RETURN_URL, value: "savrogyl://digilocker/done" }
+      # OTP: DEMO MODE for now. The fixed code below signs in any number and sends no SMS.
+      # Remove DEMO_OTP before NODE_ENV=production (the server refuses to start with it in production).
+      - { key: DEMO_OTP, value: "123456" }
+      - { key: SMS_PROVIDER, value: console }
+      # Real OTP (Twilio Verify), switched off for now. To enable: delete DEMO_OTP, set SMS_PROVIDER=twilio_verify, uncomment these three.
+      # - { key: TWILIO_ACCOUNT_SID, sync: false }
+      # - { key: TWILIO_AUTH_TOKEN, sync: false }
+      # - { key: TWILIO_VERIFY_SID, sync: false }              # the Verify service id, starts with VA
+      # DigiLocker (Setu sandbox)
+      - { key: DL_PROVIDER, value: setu }
+      - { key: SETU_ENV, value: sandbox }
+      - { key: DL_PURPOSE, value: "Identity verification for legal services" }
+      - { key: SETU_PRODUCT_INSTANCE_ID, sync: false }
+      - { key: SETU_CLIENT_ID, sync: false }
+      - { key: SETU_CLIENT_SECRET, sync: false }
+

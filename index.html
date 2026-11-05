@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>GetYourLawyer</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="libs/leaflet/leaflet.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app">
+  <main id="screen" aria-live="polite"></main>
+  <button id="botfab" class="botfab hide" data-act="bot" aria-label="Ask the assistant"></button>
+  <nav id="tabs" class="hide" aria-label="Main"></nav>
+</div>
+<div id="layers"></div>
+<div id="toasts" aria-live="assertive"></div>
+<script src="libs/leaflet/leaflet.js"></script>
+<script src="js/core.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/client.js"></script>
+<script src="js/cases.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/account.js"></script>
+<script src="js/lawyer.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
