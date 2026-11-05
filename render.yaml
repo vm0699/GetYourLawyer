@@ -10,7 +10,7 @@ services:
     runtime: node
     region: singapore                 # closest Render region to India
     plan: free                        # sleeps after ~15 min idle (first request then takes ~1 minute). Use "starter" (paid) to stay awake
-    buildCommand: cd server && npm ci --omit=dev
+    buildCommand: cd server && npm install --omit=dev
     startCommand: cd server && node server.js
     healthCheckPath: /api/health
     autoDeploy: true
@@ -34,11 +34,12 @@ services:
       # - { key: TWILIO_ACCOUNT_SID, sync: false }
       # - { key: TWILIO_AUTH_TOKEN, sync: false }
       # - { key: TWILIO_VERIFY_SID, sync: false }              # the Verify service id, starts with VA
-      # DigiLocker (Setu sandbox)
-      - { key: DL_PROVIDER, value: setu }
+      # DigiLocker: built-in mock for the demo dry run. For real DigiLocker set DL_PROVIDER=setu and fill the SETU_* values below.
+      - { key: DL_PROVIDER, value: mock }
       - { key: SETU_ENV, value: sandbox }
       - { key: DL_PURPOSE, value: "Identity verification for legal services" }
       - { key: SETU_PRODUCT_INSTANCE_ID, sync: false }
       - { key: SETU_CLIENT_ID, sync: false }
       - { key: SETU_CLIENT_SECRET, sync: false }
+
 
